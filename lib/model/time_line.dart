@@ -11,19 +11,24 @@ class TimeLine {
 class TimeLinePoint {
   DateTime dateTime;
 
-  String text;
+  List<TimeLineEvent> events;
 
-  Color color;
-
-  TimeLinePoint(this.text, this.dateTime, this.color);
+  TimeLinePoint(this.dateTime, this.events);
 
   String get hourAndMinute {
     return DateFormat('kk.mm').format(dateTime);
-    //return dateTime.hour.toString() + "." + dateTime.minute.toString();
   }
 
   int operator -(TimeLinePoint timeLinePoint) {
     return dateTime.millisecondsSinceEpoch -
         timeLinePoint.dateTime.millisecondsSinceEpoch;
   }
+}
+
+class TimeLineEvent {
+  String text;
+
+  Color color;
+
+  TimeLineEvent(this.text, this.color);
 }
