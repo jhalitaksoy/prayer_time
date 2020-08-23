@@ -1,76 +1,95 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:prayer_time/model/time_line.dart';
-import 'package:prayer_time/provider/time_line_provider.dart';
 
-const leftOfLineSpace = 40;
+const leftOfLineSpace = 30;
 const lineSpace = 20;
 const rightOfLineSpace = 150;
 
 class TimeLineWidget extends StatefulWidget {
-  TimeLineWidget({Key key}) : super(key: key);
+  final TimeLine timeLine;
+  TimeLineWidget({Key key, this.timeLine}) : super(key: key);
 
   @override
-  _TimeLineWidgetState createState() => _TimeLineWidgetState();
+  _TimeLineWidgetState createState() => _TimeLineWidgetState(timeLine);
 }
 
 class _TimeLineWidgetState extends State<TimeLineWidget> {
-  TimeLine timeLine;
+  TimeLine timeline;
+
+  _TimeLineWidgetState(this.timeline);
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<TimeLine>(
-      future: TimeLineProvider().loadTimeLine(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          return Stack(
-            children: [Line(), buildContent(snapshot.data)],
-          );
-        }
-
-        return Center(child: CircularProgressIndicator());
-      },
+    return Container(
+      color: Colors.white,
+      child: Stack(
+        children: [
+          Line(),
+          buildContent(),
+        ],
+      ),
     );
   }
 
-  Column buildContent(TimeLine timeline) {
-    final timePointStart = timeline.points[0];
-    final timePointMiddle = timeline.points[1];
-    final timePointEnd = timeline.points[2];
+  Column buildContent() {
+    var timelineWidgets = <Widget>[];
 
-    final split1 = timePointMiddle - timePointStart;
-    final split2 = timePointEnd - timePointMiddle;
+    final first = timeline.points.first;
+    final last = timeline.points.last;
 
-    final space1 = 10 * split1 / split2;
-    final space2 = space1 * split2 / split1;
+    final maxDistance = split(last.dateTime, first.dateTime);
 
-    print('${space1.toString()} , ${space2.toString()}');
+    timelineWidgets.add(
+      TimeLinePointWidget(
+        timeLinePoint: first,
+      ),
+    );
+    final topSpace = 1;
+    final bottomSpace = 1;
+    final contentSize = 100 - topSpace - bottomSpace;
+
+    var before = first;
+    for (var timeLinePoint in timeline.points) {
+      if (timeLinePoint == first) continue;
+      final flex = (split(timeLinePoint.dateTime, before.dateTime) /
+              maxDistance *
+              contentSize)
+          .toInt();
+
+      timelineWidgets.add(Expanded(flex: flex, child: Container()));
+      timelineWidgets.add(TimeLinePointWidget(timeLinePoint: timeLinePoint));
+      before = timeLinePoint;
+    }
 
     return Column(
       children: [
-        Expanded(flex: 25, child: Container()),
-        TimeLinePointWidget(timeLinePoint: timePointStart),
+        Expanded(flex: topSpace, child: Container()),
         Expanded(
-          flex: 50,
+          flex: 80,
           child: Column(
-            children: [
-              Expanded(flex: space1.toInt(), child: Container()),
-              TimeLinePointWidget(timeLinePoint: timePointMiddle),
-              Expanded(flex: space2.toInt(), child: Container()),
-            ],
+            children: timelineWidgets,
           ),
         ),
-        TimeLinePointWidget(timeLinePoint: timePointEnd),
-        Expanded(flex: 25, child: Container()),
+        Expanded(flex: bottomSpace, child: Container()),
       ],
     );
   }
 }
 
+int split(DateTime dt1, DateTime dt2) {
+  return dt1.millisecondsSinceEpoch - dt2.millisecondsSinceEpoch;
+}
+
 class TimeLinePointWidget extends StatelessWidget {
+  static final String heroTag = "TimeLinePointWidgetHerp";
+
   final TimeLinePoint timeLinePoint;
 
-  final circleWidth = 5 / 100;
+  final circleWidth = 4 / 100;
+
+  final textSize = 4.5 / 100;
+  final secondTextSize = 4 / 100;
 
   const TimeLinePointWidget({Key key, this.timeLinePoint}) : super(key: key);
 
@@ -88,7 +107,8 @@ class TimeLinePointWidget extends StatelessWidget {
                 '${timeLinePoint.hourAndMinute}',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 20,
+                  color: Colors.black.withOpacity(0.7),
+                  fontSize: widthOfScreen * secondTextSize,
                 ),
               )),
         ),
@@ -96,23 +116,56 @@ class TimeLinePointWidget extends StatelessWidget {
           flex: lineSpace,
           child: Center(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(20),
               child: Container(
-                  width: size, height: size, color: timeLinePoint.color),
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(5.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                        width: size,
+                        height: size,
+                        color: timeLinePoint.events.first.color),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
         Expanded(
           flex: rightOfLineSpace,
-          child: Text(
-            timeLinePoint.text,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 24,
-            ),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Row(
+                children: timeLinePoint.events
+                    .map((e) => buildTimeLineEvent(widthOfScreen, e))
+                    .toList()),
           ),
         )
       ],
+    );
+  }
+
+  Container buildTimeLineEvent(
+    double widthOfScreen,
+    TimeLineEvent timeLineEvent,
+  ) {
+    return Container(
+      margin: EdgeInsets.all(1),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(50),
+        color: timeLineEvent.color,
+      ),
+      child: Text(
+        timeLineEvent.text,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: widthOfScreen * textSize,
+          color: Colors.white,
+        ),
+      ),
     );
   }
 }
@@ -122,7 +175,7 @@ class Line extends StatelessWidget {
 
   final lineWidth = 1 / 100;
 
-  const Line({Key key, this.color = Colors.blue}) : super(key: key);
+  const Line({Key key, this.color = Colors.green}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
